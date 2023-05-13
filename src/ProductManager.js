@@ -15,12 +15,18 @@ export class ProductManager {
     }
 
     async addProduct(product) {
-        const products = await this.getProducts();
-        const id = await this.getLastId() + 1;
-        product.id = id;
-        products.push(product);
-        this.products = products;
-        await fs.writeFile(this.path, JSON.stringify(this.products), "utf-8");
+        if (this.isValidProduct(product)) {
+            const products = await this.getProducts();
+            const newProduct = new Product(product.title, product.description, product.price, product.thumbnail, product.code, product.stock);
+            const id = await this.getLastId() + 1;
+            newProduct.setId(id);
+            products.push(newProduct);
+            this.products = products;
+            await fs.writeFile(this.path, JSON.stringify(this.products), "utf-8");
+        } else {
+            console.log(`Todos los campos deben ser seteados`);
+            throw new Error(`Todos los campos deben ser seteados`);
+        }
     }
 
     async getProducts() {
@@ -32,7 +38,7 @@ export class ProductManager {
                 return [];
             }
         } catch (error) {
-            console.log(`Error al leer el archivo de productos: ${error.message}`);
+            console.error(`Error al leer el archivo de productos: ${error.message}`);
             return [];
         }
     }
@@ -47,26 +53,74 @@ export class ProductManager {
             }
         }
         if(!!foundProduct) return foundProduct;
-        else console.log(`Product with id: ${id} not found.`);
+        else {
+            console.error(`Product with id: ${id} not found.`);
+            return null;
+        }
     }
 
     async updateProduct(id, product) {
-        const products = await this.getProducts();
-        product.id = id;
-        for(let i=0; i<products.length; i++) {
-            if(products[i].id == id) {
-                products[i] = product;
-                i = products.length;
+        if (this.hasValidProp(product)) {
+            const products = await this.getProducts();
+            let found = false;
+            let i = 0;
+            while (i < products.length || !found) {
+                if (products[i].id == id) {
+                    found = true;
+                    const title = product.title ? product.title : products[i].title;
+                    const description = product.description? product.description : products[i].description;
+                    const price = product.price? product.price : products[i].price;
+                    const thumbnail = product.thumbnail? product.thumbnail : products[i].thumbnail;
+                    const code = product.code? product.code : products[i].code;
+                    const stock = product.stock? product.stock : products[i].stock;
+                    const newProduct = new Product(title, description, price, thumbnail, code, stock);
+                    newProduct.setId(id);
+                    products[i] = newProduct;
+                }
+                i++;
             }
-        }
-        this.products = products;
-        await fs.writeFile(this.path, JSON.stringify(this.products));
+            if (found) {
+                this.products = products;
+                await fs.writeFile(this.path, JSON.stringify(this.products));
+            } else {
+                console.log(`Product with id: ${id} not found.`);
+                throw new Error(`Product with id: ${id} not found.`);
+            }
+        } else {
+            console.log(`El producto ${JSON.stringify(product)} no contiene ninguna propiedad valida para actualizar`);
+            throw new Error(`El producto ${JSON.stringify(product)} no contiene ninguna propiedad valida para actualizar`);
+        };
     }
 
     async deleteProduct(id) {
         const products = await this.getProducts();
-        products = products.filter(product => product.id == id);
-        this.products = products;
-        await fs.writeFile(this.path, JSON.stringify(this.products));
+        let found = false;
+        let i = 0;
+        while (i < products.length || !found) {
+            if (products[i].id == id) {
+                products.splice(i, 1);
+                found = true;
+            }
+            i++;
+        }
+        if (found) {
+            this.products = products;
+            await fs.writeFile(this.path, JSON.stringify(this.products));
+        } else {
+            console.log(`Product with id: ${id} not found.`);
+            throw new Error(`Product with id: ${id} not found.`);
+        }
+    }
+    isValidProduct(product) {
+        if (!product.title || !product.description || !product.price || !product.thumbnail || !product.code || !product.stock) {
+            return false;
+        }
+        return true;
+    }
+    hasValidProp(product) {
+        if (!!product.title ||!!product.description ||!!product.price ||!!product.thumbnail ||!!product.code ||!!product.stock) {
+            return true;
+        }
+        return false;
     }
 }

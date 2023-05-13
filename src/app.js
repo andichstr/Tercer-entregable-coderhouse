@@ -11,17 +11,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/products', async (req, res) => {
     let products = await service.getProducts();
-    if (!!req.query.limit) products = products.slice(0, req.query.limit);
-    if (!!products) return res.status(200).json({
-        status: "Success",
-        message: "Products found",
-        data: products
-    });
-    else return res.status(404).json({
-        status: "Error",
-        message: "Products not found",
-        data: null
-    });
+    if (!!products){
+        if (!!req.query.limit && req.query.limit >= 0 && products.length > req.query.limit) products = products.slice(0, req.query.limit);
+        return res.status(200).json({
+            status: "Success",
+            message: "Products found",
+            data: products
+        });
+    }else return res.status(404).json({
+            status: "Error",
+            message: "Products not found",
+            data: null
+        });
 });
 
 app.get('/products/:pid', async (req, res) => {
